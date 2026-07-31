@@ -64,6 +64,30 @@ TEAMS = {  # abbrev: (display name, division)
     "SF": ("Giants", "NL West"),
 }
 
+# Spotrac team pages, as linked from the 2026 payroll tracker
+# (https://www.spotrac.com/mlb/payroll/_/year/2026), scraped 2026-07-31.
+SPOTRAC = {
+    "ARI": "arizona-diamondbacks", "ATH": "athletics",
+    "ATL": "atlanta-braves", "BAL": "baltimore-orioles",
+    "BOS": "boston-red-sox", "CHC": "chicago-cubs",
+    "CHW": "chicago-white-sox", "CIN": "cincinnati-reds",
+    "CLE": "cleveland-guardians", "COL": "colorado-rockies",
+    "DET": "detroit-tigers", "HOU": "houston-astros",
+    "KC": "kansas-city-royals", "LAA": "los-angeles-angels",
+    "LAD": "los-angeles-dodgers", "MIA": "miami-marlins",
+    "MIL": "milwaukee-brewers", "MIN": "minnesota-twins",
+    "NYM": "new-york-mets", "NYY": "new-york-yankees",
+    "PHI": "philadelphia-phillies", "PIT": "pittsburgh-pirates",
+    "SD": "san-diego-padres", "SEA": "seattle-mariners",
+    "SF": "san-francisco-giants", "STL": "st-louis-cardinals",
+    "TB": "tampa-bay-rays", "TEX": "texas-rangers",
+    "TOR": "toronto-blue-jays", "WSH": "washington-nationals",
+}
+
+
+def spotrac_url(ab):
+    return f"https://www.spotrac.com/mlb/{SPOTRAC[ab]}"
+
 
 def repo_root():
     here = os.path.dirname(os.path.abspath(__file__))
@@ -130,6 +154,7 @@ def standings(sched_dir):
         rows.append({
             "ab": ab, "name": name, "div": div,
             "payroll": PAYROLL[ab],
+            "url": spotrac_url(ab),
             "w": r["w"], "l": r["l"], "pct": round(pct, 3),
             "aw": round(r["aw"], 1), "al": round(r["al"], 1),
             "apct": round(apct, 3), "delta": round(apct - pct, 3),

@@ -37,6 +37,8 @@
     border-bottom:1px solid var(--line);font-size:13px}
   tr:last-child td{border-bottom:none}
   td.team{font-weight:600;white-space:nowrap}
+  td.team a{color:var(--ink)}
+  td.team a:hover{color:var(--blue)}
   td.team .ab{color:var(--dim);font-weight:400;font-size:11px;margin-left:5px}
   .pos{color:var(--accent)} .neg{color:var(--accent2)} .flat{color:var(--dim)}
   .apct{font-weight:700}
@@ -116,6 +118,9 @@
   const fmtPct = v => v.toFixed(3).replace(/^0/,"");
   const fmtD = v => (v>0?"+":v<0?"−":"") + Math.abs(v).toFixed(3).replace(/^0/,"");
   const ml = v => (v>0?"+":"") + v;
+  const teamName = t => t.url
+    ? `<a href="${t.url}" target="_blank" rel="noopener">${t.name}</a>`
+    : t.name;
 
   $("sub").textContent = `2026 season · ${D.gamesProcessed} games · α = ${D.alpha}`
     + ` · payrolls as of ${D.payrollAsOf} · updated ${D.generated}`;
@@ -126,7 +131,7 @@
   D.standings.forEach(t => (byDiv[t.div] = byDiv[t.div]||[]).push(t));
   $("divGrid").innerHTML = divs.map(dv => {
     const rows = byDiv[dv].map(t => `<tr>
-      <td class="team">${t.name}<span class="ab">${t.ab}</span></td>
+      <td class="team">${teamName(t)}<span class="ab">${t.ab}</span></td>
       <td>${t.w}-${t.l}</td><td>${fmtPct(t.pct)}</td>
       <td>${t.aw.toFixed(1)}-${t.al.toFixed(1)}</td>
       <td class="apct">${fmtPct(t.apct)}</td>
@@ -143,7 +148,7 @@
      <th>PAR W-L</th><th>PAR%</th><th>Δ</th></tr>` +
     D.standings.map((t,i) => `<tr>
       <td class="rk">${i+1}</td>
-      <td class="team">${t.name}<span class="ab">${t.ab}</span></td>
+      <td class="team">${teamName(t)}<span class="ab">${t.ab}</span></td>
       <td>${fmtM(t.payroll)}</td>
       <td>${t.w}-${t.l}</td><td>${fmtPct(t.pct)}</td>
       <td>${t.aw.toFixed(1)}-${t.al.toFixed(1)}</td>
