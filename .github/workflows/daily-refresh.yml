@@ -1,0 +1,33 @@
+name: Daily data refresh
+
+on:
+  schedule:
+    - cron: "0 10 * * *"  # 10:00 UTC (~6am ET), after West Coast finals
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch latest schedule data
+        run: python3 scripts/fetch_data.py
+
+      - name: Rebuild site data
+        run: python3 scripts/generate_site.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add schedule docs/data.js
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "Daily data refresh $(date -u +%F)"
+            git push
+          fi
