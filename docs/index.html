@@ -51,6 +51,8 @@
   .g{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
   .g .top{display:flex;justify-content:space-between;color:var(--dim);
     font-size:11px;margin-bottom:8px}
+  .g .top a{color:var(--dim)}
+  .g .top a:hover{color:var(--blue)}
   .live{color:var(--accent2);font-weight:700}
   .row{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0}
   .row .nm{font-weight:600}
@@ -88,16 +90,17 @@
   </section>
 
   <section id="league" class="hide">
-    <div class="note">All 30 clubs by PAR%. If you assume a club that spends more will always beat a club that spends less, how well is each club upending that assumption and outperforming or underperforming its payroll? </div>
+    <div class="note">All 30 clubs by PAR%.</div>
     <div class="card"><table id="lgTable"></table></div>
   </section>
 
   <section id="slate" class="hide">
-    <div class="note"><b>NOT FOR GAMBLING PURPOSES</b> These are payroll-implied "lines" — not betting odds. The line converts
-      each club's share of combined (dampened) payroll into a moneyline format.
+    <div class="note">Payroll-implied lines — not betting odds. The "line" converts
+      each club's share of combined (dampened) payroll into moneyline format.
       <b style="color:var(--accent)">At stake</b> is what an upset is worth: the
       underdog banks that many wins and the favorite eats that many losses.
-      A favorite's win is a plain 1–1.</div>
+      A favorite's win is a plain 1–1. Matchup links open Baseball Savant's live
+      gamefeed.</div>
     <div id="slateDays"></div>
   </section>
 
@@ -156,6 +159,7 @@
     {weekday:"long", month:"long", day:"numeric", timeZone:"UTC"});
   const gameTime = iso => new Date(iso).toLocaleTimeString("en-US",
     {hour:"numeric", minute:"2-digit", timeZone:"America/New_York"}) + " ET";
+  const savant = pk => `https://baseballsavant.mlb.com/gamefeed?gamePk=${pk}`;
   $("slateDays").innerHTML = Object.keys(days).sort().map(d => {
     const cards = days[d].map(g => {
       const rows = [g.away, g.home].map(ab => {
@@ -169,7 +173,7 @@
       }).join("");
       return `<div class="g">
         <div class="top"><span>${g.live?'<span class="live">LIVE</span>':gameTime(g.iso)}</span>
-          <span>${g.away} @ ${g.home}</span></div>
+          <a href="${savant(g.pk)}" target="_blank" rel="noopener">${g.away} @ ${g.home} ↗</a></div>
         ${rows}
         <div class="foot">
           <span>Payroll edge <b>${g.fav} +${fmtM(g.edge)}</b></span>
