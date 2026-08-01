@@ -11,7 +11,8 @@ directory containing this script, or the script's own directory if it
 holds schedule/ itself).
 
 Payroll basis: Spotrac 2026 Active payroll snapshot (see PAYROLL).
-Model: upset-only payroll-logistic, g = max(1, 2*P_L^a/(P_L^a+P_W^a)).
+Model: upset-only payroll-logistic, g = max(1, 2*P_L^a/(P_L^a+P_W^a)),
+with per-game implied expectancy clamped to [1-MODEL_CAP, MODEL_CAP].
 """
 import glob
 import json
@@ -19,6 +20,11 @@ import os
 from datetime import datetime, timezone
 
 ALPHA = 0.5
+# No club is ever priced outside this band for a single game. Payroll alone
+# implies .767 for the richest club over the poorest, which no rational
+# market would post; the guard reflects that even the best team loses and
+# the worst team wins. Capping the favourite floors the underdog at 1-CAP.
+MODEL_CAP = 0.72
 PAYROLL_ASOF = "2026-07-28"
 
 PAYROLL = {
@@ -97,16 +103,20 @@ def repo_root():
     return here
 
 
-def game_weight(p_winner, p_loser, alpha=ALPHA):
-    """Upset-only payroll-logistic. Expected outcome -> 1.0; upset in (1,2)."""
-    w, l = p_winner ** alpha, p_loser ** alpha
-    return max(1.0, 2 * l / (w + l))
-
-
-def implied_expectancy(p_a, p_b, alpha=ALPHA):
-    """Payroll-implied win expectancy for team A vs team B."""
+def implied_expectancy(p_a, p_b, alpha=ALPHA, cap=MODEL_CAP):
+    """Payroll-implied win expectancy for A over B, clamped to [1-cap, cap]."""
     a, b = p_a ** alpha, p_b ** alpha
-    return a / (a + b)
+    e = a / (a + b)
+    return min(max(e, 1 - cap), cap)
+
+
+def game_weight(p_winner, p_loser, alpha=ALPHA, cap=MODEL_CAP):
+    """Upset-only payroll-logistic. Favoured outcome -> 1.0; upset in (1, 2*cap].
+
+    The weight is twice the LOSER's implied expectancy, so beating a club the
+    market priced higher pays more. Clamped, the ceiling is 2*0.72 = 1.44.
+    """
+    return max(1.0, 2 * implied_expectancy(p_loser, p_winner, alpha, cap))
 
 
 def to_moneyline(e):
@@ -126,7 +136,7 @@ def load_dates(path_glob):
 
 def standings(sched_dir):
     rec = {ab: {"w": 0, "l": 0, "aw": 0.0, "al": 0.0,
-                "expw": 0, "expl": 0, "upsw": 0, "upsl": 0}
+                "favw": 0, "favl": 0, "upsw": 0, "upsl": 0}
            for ab in PAYROLL}
     n = 0
     for date in load_dates(os.path.join(sched_dir, "sched_*.json")):
@@ -143,14 +153,16 @@ def standings(sched_dir):
                 continue
             gw = game_weight(PAYROLL[w_ab], PAYROLL[l_ab])
             # Upset = the lower-payroll club won. Equal payroll counts as
-            # expected (weight is exactly 1.0 either way).
+            # favoured (weight is exactly 1.0 either way). Note this is a
+            # statement about relative spend, not a prediction: payroll
+            # barely tracks single-game outcomes.
             upset = PAYROLL[w_ab] < PAYROLL[l_ab]
             rec[w_ab]["w"] += 1
             rec[w_ab]["aw"] += gw
-            rec[w_ab]["upsw" if upset else "expw"] += 1
+            rec[w_ab]["upsw" if upset else "favw"] += 1
             rec[l_ab]["l"] += 1
             rec[l_ab]["al"] += gw
-            rec[l_ab]["upsl" if upset else "expl"] += 1
+            rec[l_ab]["upsl" if upset else "favl"] += 1
             n += 1
     rows = []
     for ab, r in rec.items():
@@ -163,7 +175,7 @@ def standings(sched_dir):
             "payroll": PAYROLL[ab],
             "url": spotrac_url(ab),
             "w": r["w"], "l": r["l"], "pct": round(pct, 3),
-            "expw": r["expw"], "expl": r["expl"],
+            "favw": r["favw"], "favl": r["favl"],
             "upsw": r["upsw"], "upsl": r["upsl"],
             "aw": round(r["aw"], 1), "al": round(r["al"], 1),
             "apct": round(apct, 3), "delta": round(apct - pct, 3),
@@ -212,6 +224,7 @@ def main():
         "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
         "season": 2026,
         "alpha": ALPHA,
+        "modelCap": MODEL_CAP,
         "payrollAsOf": PAYROLL_ASOF,
         "gamesProcessed": n_games,
         "standings": st,
