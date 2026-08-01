@@ -125,7 +125,16 @@
   #about .x{background:none;border:none;color:var(--dim);font-size:22px;
     line-height:1;cursor:pointer;padding:0 4px}
   #about .x:hover{color:var(--ink)}
-  #about .bd{padding:18px 20px;max-height:70vh;overflow-y:auto}
+  #about .bd{padding:18px 20px;max-height:70vh;overflow-y:auto;
+    /* standard properties: Firefox, Chrome 121+, Safari 18.2+ */
+    scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  /* older WebKit/Blink. Ignored where scrollbar-color is supported. */
+  #about .bd::-webkit-scrollbar{width:10px}
+  #about .bd::-webkit-scrollbar-track{background:transparent}
+  #about .bd::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;
+    border:3px solid var(--panel);background-clip:padding-box}
+  #about .bd::-webkit-scrollbar-thumb:hover{background:#3a4456;
+    border:3px solid var(--panel);background-clip:padding-box}
   #about p{margin-bottom:14px}
   #about ul{margin:0 0 14px 18px}
   #about li{margin-bottom:6px}
