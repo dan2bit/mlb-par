@@ -15,7 +15,7 @@
   body{background:var(--bg);color:var(--ink);
     font:14px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
   a{color:var(--blue);text-decoration:none}
-  .wrap{max-width:1100px;margin:0 auto;padding:0 16px 64px}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 16px 64px}
   header{padding:28px 0 10px}
   header h1{font-size:26px;letter-spacing:-.02em}
   header h1 .par{color:var(--accent)}
@@ -24,8 +24,8 @@
   nav button{background:none;border:none;color:var(--dim);font:600 14px inherit;
     padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent}
   nav button.on{color:var(--ink);border-bottom-color:var(--accent)}
-  .note{color:var(--dim);font-size:12px;margin:10px 0 18px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+  .note{color:var(--dim);font-size:12px;margin:10px 0 18px;max-width:900px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
   .card h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;
     color:var(--dim);padding:10px 12px;border-bottom:1px solid var(--line)}
@@ -42,8 +42,14 @@
   td.team .ab{color:var(--dim);font-weight:400;font-size:11px;margin-left:5px}
   .pos{color:var(--accent)} .neg{color:var(--accent2)} .flat{color:var(--dim)}
   .apct{font-weight:700}
-  /* divisions: records like 74.2-46.2 must not break at the hyphen */
-  #divGrid td,#divGrid th{white-space:nowrap}
+  /* divisions: records like 74.2-46.2 must not break at the hyphen.
+     Content needs ~348px; .grid's 360px minimum keeps it from clipping. */
+  #divGrid td,#divGrid th{white-space:nowrap;padding-left:6px;padding-right:6px}
+  #divGrid td:first-child,#divGrid th:first-child{padding-left:10px}
+  @media (max-width:400px){
+    #divGrid td{font-size:12px}
+    #divGrid td.team .ab{font-size:10px}
+  }
   .sortbar{display:flex;align-items:center;gap:6px;margin:0 0 14px;
     font-size:12px;color:var(--dim)}
   .sortbar button{background:var(--panel);color:var(--dim);cursor:pointer;
