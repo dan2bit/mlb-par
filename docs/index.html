@@ -75,7 +75,7 @@
     border-radius:10px;padding:10px 12px}
   /* Upset-worth tranches. Fixed boundaries (1.10/1.25/1.40) so a given
      matchup always shades the same regardless of the rest of the slate.
-     Ceiling of the metric is 1.535 (poorest club beating the richest). */
+     Ceiling of the metric is 2*MODEL_CAP = 1.44. */
   .g.t1{border-left-color:var(--line)}
   .g.t2{border-left-color:rgba(63,182,139,.45);
     background-image:linear-gradient(rgba(63,182,139,.05),rgba(63,182,139,.05))}
@@ -130,10 +130,10 @@
   </nav>
 
   <section id="divisions">
-    <div class="note">Payroll-Adjusted Record: expected outcomes (richer team wins)
-      count 1–1; an upset credits the underdog 1–2 wins and debits the favorite the
-      same in losses. PAR% is the adjusted winning percentage; Δ is PAR% minus
-      actual PCT.</div>
+    <div class="note">Payroll-Adjusted Record: when the higher-paid club wins, the
+      result the market implied, it counts 1–1. An upset credits the underdog up to
+      1.44 wins and debits the favourite the same in losses. PAR% is the adjusted
+      winning percentage; Δ is PAR% minus actual PCT.</div>
     <div class="sortbar">Sort every division by
       <button id="d-apct" class="on">PAR%</button>
       <button id="d-pct">PCT</button>
@@ -143,9 +143,10 @@
 
   <section id="league" class="hide">
     <div class="note">All 30 clubs by PAR%. If you assume a club that spends more will always beat a club that spends less, how well is each club upending that assumption and outperforming or underperforming its payroll?
-      <b>EXPW/EXPL</b> are games decided as payroll expected (each worth a
-      plain 1); <b>UPSW/UPSL</b> are upsets, where the lower-payroll club won
-      (worth 1–2). Click a column heading to sort.</div>
+      <b>FAVW/FAVL</b> are games the payroll favoured (each worth a plain 1);
+      <b>UPSW/UPSL</b> are upsets, where the lower-payroll club won (worth up to
+      1.44). "Favoured" describes relative spend, not a forecast. Click a column
+      heading to sort.</div>
     <div class="card"><table id="lgTable"></table></div>
   </section>
 
@@ -154,8 +155,8 @@
       each club's share of combined (dampened) payroll into a moneyline format.
       <b style="color:var(--accent)">At stake</b> is what an upset is worth: the
       underdog banks that many wins and the favorite eats that many losses.
-      A favorite's win is a plain 1–1. Matchup links open Baseball Savant's live
-      gamefeed.</div>
+      A favourite's win is a plain 1–1. No club is priced outside 28–72% for any
+      single game. Matchup links open Baseball Savant's live gamefeed.</div>
     <div class="legend">
       <span>Upset worth:</span>
       <span><i class="k1"></i>Even &lt;1.10</span>
@@ -178,6 +179,10 @@
   const fmtPct = v => v.toFixed(3).replace(/^0/,"");
   const fmtD = v => (v>0?"+":v<0?"−":"") + Math.abs(v).toFixed(3).replace(/^0/,"");
   const ml = v => (v>0?"+":"") + v;
+  // tolerate a data.js generated before the FAVW/FAVL rename
+  D.standings.forEach(t => {
+    if (t.favw === undefined && t.expw !== undefined) { t.favw = t.expw; t.favl = t.expl; }
+  });
   const teamName = t => t.url
     ? `<a href="${t.url}" target="_blank" rel="noopener">${t.name}</a>`
     : t.name;
@@ -225,8 +230,8 @@
     {lbl:"Payroll", key:"payroll", cls:""},
     {lbl:"W-L",     key:null,      cls:""},
     {lbl:"Pct",     key:"pct",     cls:""},
-    {lbl:"EXPW",    key:"expw",    cls:"grp", tip:"Expected wins — beat a lower-payroll club"},
-    {lbl:"EXPL",    key:"expl",    cls:"",    tip:"Expected losses — lost to a higher-payroll club"},
+    {lbl:"FAVW",    key:"favw",    cls:"grp", tip:"Favoured wins — beat a lower-payroll club"},
+    {lbl:"FAVL",    key:"favl",    cls:"",    tip:"Favoured losses — lost to a higher-payroll club"},
     {lbl:"UPSW",    key:"upsw",    cls:"",    tip:"Upset wins — beat a higher-payroll club"},
     {lbl:"UPSL",    key:"upsl",    cls:"",    tip:"Upset losses — lost to a lower-payroll club"},
     {lbl:"PAR W-L", key:null,      cls:"grp"},
@@ -251,7 +256,7 @@
       <td class="team">${teamName(t)}<span class="ab">${t.ab}</span></td>
       <td>${fmtM(t.payroll)}</td>
       <td>${t.w}-${t.l}</td><td>${fmtPct(t.pct)}</td>
-      <td class="grp">${t.expw ?? "—"}</td><td>${t.expl ?? "—"}</td>
+      <td class="grp">${t.favw ?? "—"}</td><td>${t.favl ?? "—"}</td>
       <td>${t.upsw ?? "—"}</td><td>${t.upsl ?? "—"}</td>
       <td class="grp">${t.aw.toFixed(1)}-${t.al.toFixed(1)}</td>
       <td class="apct">${fmtPct(t.apct)}</td>
@@ -276,7 +281,7 @@
     {hour:"numeric", minute:"2-digit", timeZone:"America/New_York"}) + " ET";
   const savant = pk => `https://baseballsavant.mlb.com/gamefeed?gamePk=${pk}`;
   // fixed tranches, not per-slate quantiles: shading means the same thing
-  // every day. Boundaries approved against the full 1.00-1.535 range.
+  // every day. Ceiling is 2*modelCap = 1.44.
   const tier = s => s >= 1.40 ? 4 : s >= 1.25 ? 3 : s >= 1.10 ? 2 : 1;
   $("slateDays").innerHTML = Object.keys(days).sort().map(d => {
     const cards = days[d].map(g => {
@@ -320,7 +325,9 @@
 
   $("foot").innerHTML = `Payroll-Adjusted Record (PAR) weights each game by the
     Spotrac active-payroll gap between the clubs: g = max(1, 2·P<sub>L</sub><sup>α</sup> /
-    (P<sub>L</sub><sup>α</sup>+P<sub>W</sub><sup>α</sup>)), α=${D.alpha}. Zero-sum per game.
+    (P<sub>L</sub><sup>α</sup>+P<sub>W</sub><sup>α</sup>)), α=${D.alpha}, with per-game
+    expectancy clamped to ${D.modelCap?`${Math.round((1-D.modelCap)*100)}–${Math.round(D.modelCap*100)}%`:"28–72%"}.
+    Zero-sum per game.
     "Lines" are payroll-implied only and are not wagering odds. Results: MLB Stats API ·
     Payrolls: Spotrac · <a href="https://github.com/dan2bit/mlb-par">github.com/dan2bit/mlb-par</a>`;
 })();
