@@ -42,6 +42,16 @@
   td.team .ab{color:var(--dim);font-weight:400;font-size:11px;margin-left:5px}
   .pos{color:var(--accent)} .neg{color:var(--accent2)} .flat{color:var(--dim)}
   .apct{font-weight:700}
+  /* divisions: records like 74.2-46.2 must not break at the hyphen */
+  #divGrid td,#divGrid th{white-space:nowrap}
+  .sortbar{display:flex;align-items:center;gap:6px;margin:0 0 14px;
+    font-size:12px;color:var(--dim)}
+  .sortbar button{background:var(--panel);color:var(--dim);cursor:pointer;
+    border:1px solid var(--line);border-radius:99px;padding:4px 12px;
+    font:600 12px inherit}
+  .sortbar button:hover{color:var(--ink)}
+  .sortbar button.on{background:var(--panel2);color:var(--ink);
+    border-color:var(--accent)}
   /* league table */
   #league td.rk{color:var(--dim);width:30px;text-align:left;padding-left:12px}
   #league td{white-space:nowrap}
@@ -97,6 +107,10 @@
       count 1–1; an upset credits the underdog 1–2 wins and debits the favorite the
       same in losses. PAR% is the adjusted winning percentage; Δ is PAR% minus
       actual PCT.</div>
+    <div class="sortbar">Sort every division by
+      <button id="d-apct" class="on">PAR%</button>
+      <button id="d-pct">PCT</button>
+      <span>descending</span></div>
     <div class="grid" id="divGrid"></div>
   </section>
 
@@ -138,21 +152,33 @@
     + ` · payrolls as of ${D.payrollAsOf} · updated ${D.generated}`;
 
   // ----- divisions -----
+  // One sort choice governs all six tables; descending only.
   const divs = ["AL East","AL Central","AL West","NL East","NL Central","NL West"];
   const byDiv = {};
   D.standings.forEach(t => (byDiv[t.div] = byDiv[t.div]||[]).push(t));
-  $("divGrid").innerHTML = divs.map(dv => {
-    const rows = byDiv[dv].map(t => `<tr>
-      <td class="team">${teamName(t)}<span class="ab">${t.ab}</span></td>
-      <td>${t.w}-${t.l}</td><td>${fmtPct(t.pct)}</td>
-      <td>${t.aw.toFixed(1)}-${t.al.toFixed(1)}</td>
-      <td class="apct">${fmtPct(t.apct)}</td>
-      <td class="${t.delta>0.0005?"pos":t.delta<-0.0005?"neg":"flat"}">${fmtD(t.delta)}</td>
-    </tr>`).join("");
-    return `<div class="card"><h3>${dv}</h3><table>
-      <tr><th>Team</th><th>W-L</th><th>Pct</th><th>PAR W-L</th><th>PAR%</th><th>Δ</th></tr>
-      ${rows}</table></div>`;
-  }).join("");
+  let divSort = "apct";
+
+  function renderDivisions(){
+    $("divGrid").innerHTML = divs.map(dv => {
+      const rows = byDiv[dv].slice()
+        .sort((a,b) => (b[divSort] - a[divSort]) || a.ab.localeCompare(b.ab))
+        .map(t => `<tr>
+        <td class="team">${teamName(t)}<span class="ab">${t.ab}</span></td>
+        <td>${t.w}-${t.l}</td><td>${fmtPct(t.pct)}</td>
+        <td>${t.aw.toFixed(1)}-${t.al.toFixed(1)}</td>
+        <td class="apct">${fmtPct(t.apct)}</td>
+        <td class="${t.delta>0.0005?"pos":t.delta<-0.0005?"neg":"flat"}">${fmtD(t.delta)}</td>
+      </tr>`).join("");
+      return `<div class="card"><h3>${dv}</h3><table>
+        <tr><th>Team</th><th>W-L</th><th>Pct</th><th>PAR W-L</th><th>PAR%</th><th>Δ</th></tr>
+        ${rows}</table></div>`;
+    }).join("");
+    $("d-apct").classList.toggle("on", divSort === "apct");
+    $("d-pct").classList.toggle("on", divSort === "pct");
+  }
+  $("d-apct").onclick = () => { divSort = "apct"; renderDivisions(); };
+  $("d-pct").onclick  = () => { divSort = "pct";  renderDivisions(); };
+  renderDivisions();
 
   // ----- league -----
   // Single-column sort only: no secondary keys, no memory. Team and the two
