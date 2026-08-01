@@ -139,6 +139,7 @@ def standings(sched_dir):
                 "favw": 0, "favl": 0, "upsw": 0, "upsl": 0}
            for ab in PAYROLL}
     n = 0
+    fav_wins = 0        # games won by the higher-payroll club
     for date in load_dates(os.path.join(sched_dir, "sched_*.json")):
         for g in date["games"]:
             if g["status"].get("codedGameState") != "F":
@@ -163,6 +164,8 @@ def standings(sched_dir):
             rec[l_ab]["l"] += 1
             rec[l_ab]["al"] += gw
             rec[l_ab]["upsl" if upset else "favl"] += 1
+            if not upset:
+                fav_wins += 1
             n += 1
     rows = []
     for ab, r in rec.items():
@@ -181,7 +184,7 @@ def standings(sched_dir):
             "apct": round(apct, 3), "delta": round(apct - pct, 3),
         })
     rows.sort(key=lambda x: -x["apct"])
-    return rows, n
+    return rows, n, (fav_wins / n if n else 0.0)
 
 
 def slate(sched_dir):
@@ -218,7 +221,7 @@ def slate(sched_dir):
 def main():
     root = repo_root()
     sched_dir = os.path.join(root, "schedule")
-    st, n_games = standings(sched_dir)
+    st, n_games, fav_win_pct = standings(sched_dir)
     sl = slate(sched_dir)
     payload = {
         "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
@@ -227,6 +230,7 @@ def main():
         "modelCap": MODEL_CAP,
         "payrollAsOf": PAYROLL_ASOF,
         "gamesProcessed": n_games,
+        "favWinPct": round(fav_win_pct, 4),
         "standings": st,
         "slate": sl,
     }
