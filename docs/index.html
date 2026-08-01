@@ -43,8 +43,13 @@
   .pos{color:var(--accent)} .neg{color:var(--accent2)} .flat{color:var(--dim)}
   .apct{font-weight:700}
   /* league table */
-  #league .card{max-width:760px}
   #league td.rk{color:var(--dim);width:30px;text-align:left;padding-left:12px}
+  #league td{white-space:nowrap}
+  #league th.s{cursor:pointer;user-select:none}
+  #league th.s:hover{color:var(--ink)}
+  #league th.on{color:var(--ink)}
+  #league .car{margin-left:3px;font-size:9px}
+  #league .grp{border-left:1px solid var(--line)}
   /* slate */
   .day{margin-bottom:22px}
   .day h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;
@@ -96,7 +101,10 @@
   </section>
 
   <section id="league" class="hide">
-    <div class="note">All 30 clubs by PAR%. If you assume a club that spends more will always beat a club that spends less, how well is each club upending that assumption and outperforming or underperforming its payroll? </div>
+    <div class="note">All 30 clubs by PAR%. If you assume a club that spends more will always beat a club that spends less, how well is each club upending that assumption and outperforming or underperforming its payroll?
+      <b>EXPW/EXPL</b> are games decided as payroll expected (each worth a
+      plain 1); <b>UPSW/UPSL</b> are upsets, where the lower-payroll club won
+      (worth 1–2). Click a column heading to sort.</div>
     <div class="card"><table id="lgTable"></table></div>
   </section>
 
@@ -147,18 +155,56 @@
   }).join("");
 
   // ----- league -----
-  $("lgTable").innerHTML =
-    `<tr><th></th><th>Team</th><th>Payroll</th><th>W-L</th><th>Pct</th>
-     <th>PAR W-L</th><th>PAR%</th><th>Δ</th></tr>` +
-    D.standings.map((t,i) => `<tr>
+  // Single-column sort only: no secondary keys, no memory. Team and the two
+  // W-L columns are not sortable. Resets to PAR% desc on leaving the tab.
+  const LG_DEFAULT = {key:"apct", dir:-1};
+  let lgSort = {...LG_DEFAULT};
+  const LG_COLS = [
+    {lbl:"",        key:null,      cls:""},
+    {lbl:"Team",    key:null,      cls:""},
+    {lbl:"Payroll", key:"payroll", cls:""},
+    {lbl:"W-L",     key:null,      cls:""},
+    {lbl:"Pct",     key:"pct",     cls:""},
+    {lbl:"EXPW",    key:"expw",    cls:"grp", tip:"Expected wins — beat a lower-payroll club"},
+    {lbl:"EXPL",    key:"expl",    cls:"",    tip:"Expected losses — lost to a higher-payroll club"},
+    {lbl:"UPSW",    key:"upsw",    cls:"",    tip:"Upset wins — beat a higher-payroll club"},
+    {lbl:"UPSL",    key:"upsl",    cls:"",    tip:"Upset losses — lost to a lower-payroll club"},
+    {lbl:"PAR W-L", key:null,      cls:"grp"},
+    {lbl:"PAR%",    key:"apct",    cls:""},
+    {lbl:"Δ",  key:"delta",   cls:""},
+  ];
+
+  function renderLeague(){
+    const rows = D.standings.slice().sort((a,b) => {
+      const d = (a[lgSort.key] - b[lgSort.key]) * lgSort.dir;
+      return d || a.ab.localeCompare(b.ab);  // stable tiebreak only
+    });
+    const head = LG_COLS.map(c => {
+      if (!c.key) return `<th class="${c.cls}">${c.lbl}</th>`;
+      const on = lgSort.key === c.key;
+      const car = on ? `<span class="car">${lgSort.dir<0?"▼":"▲"}</span>` : "";
+      return `<th class="s ${c.cls} ${on?"on":""}" data-k="${c.key}"`
+        + `${c.tip?` title="${c.tip}"`:""}>${c.lbl}${car}</th>`;
+    }).join("");
+    const body = rows.map((t,i) => `<tr>
       <td class="rk">${i+1}</td>
       <td class="team">${teamName(t)}<span class="ab">${t.ab}</span></td>
       <td>${fmtM(t.payroll)}</td>
       <td>${t.w}-${t.l}</td><td>${fmtPct(t.pct)}</td>
-      <td>${t.aw.toFixed(1)}-${t.al.toFixed(1)}</td>
+      <td class="grp">${t.expw ?? "—"}</td><td>${t.expl ?? "—"}</td>
+      <td>${t.upsw ?? "—"}</td><td>${t.upsl ?? "—"}</td>
+      <td class="grp">${t.aw.toFixed(1)}-${t.al.toFixed(1)}</td>
       <td class="apct">${fmtPct(t.apct)}</td>
       <td class="${t.delta>0.0005?"pos":t.delta<-0.0005?"neg":"flat"}">${fmtD(t.delta)}</td>
     </tr>`).join("");
+    $("lgTable").innerHTML = `<tr>${head}</tr>` + body;
+    $("lgTable").querySelectorAll("th.s").forEach(th => th.onclick = () => {
+      const k = th.dataset.k;
+      lgSort = (lgSort.key === k) ? {key:k, dir:-lgSort.dir} : {key:k, dir:-1};
+      renderLeague();
+    });
+  }
+  renderLeague();
 
   // ----- slate -----
   const names = {}; D.standings.forEach(t => names[t.ab]=t);
@@ -196,6 +242,11 @@
   // ----- tabs -----
   const tabs = {"t-div":"divisions","t-lg":"league","t-slate":"slate"};
   Object.keys(tabs).forEach(id => $(id).onclick = () => {
+    if (id !== "t-lg" && (lgSort.key !== LG_DEFAULT.key
+        || lgSort.dir !== LG_DEFAULT.dir)) {
+      lgSort = {...LG_DEFAULT};   // no sort memory across visits
+      renderLeague();
+    }
     Object.entries(tabs).forEach(([b,s]) => {
       $(b).classList.toggle("on", b===id);
       $(s).classList.toggle("hide", b!==id);

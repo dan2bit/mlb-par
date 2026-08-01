@@ -125,7 +125,9 @@ def load_dates(path_glob):
 
 
 def standings(sched_dir):
-    rec = {ab: {"w": 0, "l": 0, "aw": 0.0, "al": 0.0} for ab in PAYROLL}
+    rec = {ab: {"w": 0, "l": 0, "aw": 0.0, "al": 0.0,
+                "expw": 0, "expl": 0, "upsw": 0, "upsl": 0}
+           for ab in PAYROLL}
     n = 0
     for date in load_dates(os.path.join(sched_dir, "sched_*.json")):
         for g in date["games"]:
@@ -140,10 +142,15 @@ def standings(sched_dir):
             if not w_ab or not l_ab:
                 continue
             gw = game_weight(PAYROLL[w_ab], PAYROLL[l_ab])
+            # Upset = the lower-payroll club won. Equal payroll counts as
+            # expected (weight is exactly 1.0 either way).
+            upset = PAYROLL[w_ab] < PAYROLL[l_ab]
             rec[w_ab]["w"] += 1
             rec[w_ab]["aw"] += gw
+            rec[w_ab]["upsw" if upset else "expw"] += 1
             rec[l_ab]["l"] += 1
             rec[l_ab]["al"] += gw
+            rec[l_ab]["upsl" if upset else "expl"] += 1
             n += 1
     rows = []
     for ab, r in rec.items():
@@ -156,6 +163,8 @@ def standings(sched_dir):
             "payroll": PAYROLL[ab],
             "url": spotrac_url(ab),
             "w": r["w"], "l": r["l"], "pct": round(pct, 3),
+            "expw": r["expw"], "expl": r["expl"],
+            "upsw": r["upsw"], "upsl": r["upsl"],
             "aw": round(r["aw"], 1), "al": round(r["al"], 1),
             "apct": round(apct, 3), "delta": round(apct - pct, 3),
         })
