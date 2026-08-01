@@ -109,6 +109,30 @@
   .g .foot b{color:var(--gold);font-weight:700}
   .g .foot .st b{color:var(--accent)}
   .hide{display:none}
+  /* explainer dialog */
+  .cta{background:none;border:1px solid var(--line);color:var(--dim);cursor:pointer;
+    border-radius:99px;padding:3px 11px;font:600 12px inherit;margin-left:10px;
+    vertical-align:6px}
+  .cta:hover{color:var(--ink);border-color:var(--accent)}
+  #about{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    color:var(--ink);padding:0;max-width:660px;width:calc(100% - 32px);
+    font:14px/1.6 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  #about::backdrop{background:rgba(0,0,0,.62)}
+  #about .hd{display:flex;justify-content:space-between;align-items:center;
+    padding:16px 20px;border-bottom:1px solid var(--line)}
+  #about .hd h2{font-size:17px;font-weight:600}
+  #about .hd h2 span{color:var(--accent)}
+  #about .x{background:none;border:none;color:var(--dim);font-size:22px;
+    line-height:1;cursor:pointer;padding:0 4px}
+  #about .x:hover{color:var(--ink)}
+  #about .bd{padding:18px 20px;max-height:70vh;overflow-y:auto}
+  #about p{margin-bottom:14px}
+  #about ul{margin:0 0 14px 18px}
+  #about li{margin-bottom:6px}
+  #about h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--dim);margin:20px 0 8px;font-weight:600}
+  #about .quiet{color:var(--dim)}
+  #about .num{background:var(--panel2);padding:1px 5px;border-radius:3px;font-weight:700}
   footer{margin-top:34px;color:var(--dim);font-size:11px;line-height:1.7}
 </style>
 <link rel="canonical" href="https://dan2bit.github.io/mlb-par/">
@@ -119,7 +143,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>MLB <span class="par">PAR</span> Standings</h1>
+    <h1>MLB <span class="par">PAR</span> Standings<button class="cta" id="aboutBtn">What is PAR?</button></h1>
     <div class="sub" id="sub"></div>
   </header>
 
@@ -169,6 +193,83 @@
 
   <footer id="foot"></footer>
 </div>
+
+<!-- ==================================================================
+     EXPLAINER DIALOG
+     This is ordinary HTML - edit the copy freely, no JavaScript involved.
+     The only dynamic bits are the three <span data-fill="..."> elements,
+     which are filled from data.js on load so they can never go stale:
+       games   - regular-season games counted so far
+       favpct  - share of those games won by the higher-payroll club
+       asof    - date of the payroll snapshot
+     Everything else is static prose.
+     ================================================================== -->
+<dialog id="about" aria-labelledby="aboutTitle">
+  <div class="hd">
+    <h2 id="aboutTitle">What is <span>PAR</span>?</h2>
+    <button class="x" id="aboutClose" aria-label="Close">&times;</button>
+  </div>
+  <div class="bd">
+
+    <p>Baseball's payroll gap is enormous &mdash; the Dodgers spend about eleven
+      times what the Nationals do. PAR asks one question: <b>which clubs are
+      beating what their spending implies, and which are falling short of it?</b></p>
+
+    <p class="quiet">It's a valuation, not a forecast. Think of payroll as the
+      market's price on a club; PAR scores each result against that price.</p>
+
+    <h3>How a game is scored</h3>
+    <p>Every game is still one win and one loss. What changes is how much they
+      count.</p>
+    <ul>
+      <li>When the <b>higher-paid club wins</b>, the market got what it paid for.
+        The game counts 1&ndash;1, like any ordinary game.</li>
+      <li>When the <b>lower-paid club wins</b>, it's an upset. The underdog is
+        credited more than one win and the favourite is debited exactly the same
+        in losses &mdash; the bigger the payroll gap, the bigger the credit, up to
+        <b>1.44</b>.</li>
+    </ul>
+    <p class="quiet">Nothing is invented: every credit to one club is an identical
+      debit to the other.</p>
+
+    <h3>The 28&ndash;72% guard</h3>
+    <p>Payroll alone would price the Dodgers at 77% to beat the Nationals in a
+      single game. No sensible market posts a baseball game at 77% &mdash; even the
+      best team loses about a third of its games, and the worst wins about a
+      quarter. So no club is ever priced outside <b>28&ndash;72%</b> for one game,
+      which is what caps the largest upset at 1.44.</p>
+
+    <h3>Why PAR shows more games than were played</h3>
+    <p>Upsets add weight; favoured wins never subtract any. So the adjusted totals
+      come to more than the real schedule. That's deliberate &mdash; the
+      alternative, docking a favourite for winning, punished good expensive clubs
+      for doing their job. Compare clubs on <b>PAR%</b> rather than raw adjusted
+      W-L; the ratio is the meaningful part.</p>
+
+    <h3>The tails</h3>
+    <p>The most expensive club can never record an upset win, because no club is
+      richer. The cheapest can never record a favoured win. Those zeros are facts
+      about the league's payroll structure, not quirks in the arithmetic.</p>
+
+    <h3>What the data says</h3>
+    <p>Worth knowing: payroll is a poor predictor of individual games. Across
+      <b class="num" data-fill="games">&mdash;</b> games this season the higher-paid
+      club won just <b class="num" data-fill="favpct">&mdash;</b> &mdash; barely
+      better than a coin flip. That doesn't undermine PAR. Arguably it's the point:
+      PAR measures results against price, and the price is often wrong.</p>
+
+    <h3>Where the numbers come from</h3>
+    <p>Scores and schedules: the
+      <a href="https://statsapi.mlb.com/api/v1/schedule?sportId=1&amp;season=2026&amp;gameType=R" target="_blank" rel="noopener">MLB Stats API</a>,
+      refreshed each morning. Payrolls:
+      <a href="https://www.spotrac.com/mlb/payroll/_/year/2026" target="_blank" rel="noopener">Spotrac</a>
+      active-roster figures, snapshotted <b data-fill="asof">&mdash;</b>.</p>
+    <p class="quiet">Active payroll excludes retained and deferred money, so clubs
+      still paying released players &mdash; the Cardinals and Nationals most of all
+      &mdash; look cheaper here than their total commitments.</p>
+
+  </div>
+</dialog>
 
 <script src="data.js"></script>
 <script>
@@ -309,6 +410,21 @@
     return `<div class="day"><h2>${dayLabel(d)}</h2><div class="games">${cards}</div></div>`;
   }).join("");
 
+  // ----- explainer dialog -----
+  // Copy lives in the HTML above; this only fills values and opens/closes.
+  const dlg = $("about");
+  const fill = {
+    games:  D.gamesProcessed.toLocaleString(),
+    favpct: D.favWinPct != null ? (D.favWinPct*100).toFixed(1) + "%" : "about half",
+    asof:   D.payrollAsOf,
+  };
+  document.querySelectorAll("[data-fill]").forEach(el => {
+    if (fill[el.dataset.fill] !== undefined) el.textContent = fill[el.dataset.fill];
+  });
+  $("aboutBtn").onclick   = () => dlg.showModal();   // Esc + focus handled natively
+  $("aboutClose").onclick = () => dlg.close();
+  dlg.onclick = e => { if (e.target === dlg) dlg.close(); };  // click the backdrop
+
   // ----- tabs -----
   const tabs = {"t-div":"divisions","t-lg":"league","t-slate":"slate"};
   Object.keys(tabs).forEach(id => $(id).onclick = () => {
@@ -329,7 +445,9 @@
     expectancy clamped to ${D.modelCap?`${Math.round((1-D.modelCap)*100)}–${Math.round(D.modelCap*100)}%`:"28–72%"}.
     Zero-sum per game.
     "Lines" are payroll-implied only and are not wagering odds. Results: MLB Stats API ·
-    Payrolls: Spotrac · <a href="https://github.com/dan2bit/mlb-par">github.com/dan2bit/mlb-par</a>`;
+    Payrolls: Spotrac · <a href="https://github.com/dan2bit/mlb-par">github.com/dan2bit/mlb-par</a>
+    · <a href="#" id="aboutFoot">What is PAR?</a>`;
+  $("aboutFoot").onclick = e => { e.preventDefault(); dlg.showModal(); };
 })();
 </script>
 </body>
