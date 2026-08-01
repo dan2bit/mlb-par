@@ -71,7 +71,28 @@
   .day h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;
     color:var(--dim);margin:0 0 8px 2px}
   .games{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}
-  .g{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .g{background:var(--panel);border:1px solid var(--line);border-left-width:3px;
+    border-radius:10px;padding:10px 12px}
+  /* Upset-worth tranches. Fixed boundaries (1.10/1.25/1.40) so a given
+     matchup always shades the same regardless of the rest of the slate.
+     Ceiling of the metric is 1.535 (poorest club beating the richest). */
+  .g.t1{border-left-color:var(--line)}
+  .g.t2{border-left-color:rgba(63,182,139,.45);
+    background-image:linear-gradient(rgba(63,182,139,.05),rgba(63,182,139,.05))}
+  .g.t3{border-left-color:rgba(63,182,139,.85);
+    background-image:linear-gradient(rgba(63,182,139,.10),rgba(63,182,139,.10))}
+  .g.t4{border-left-color:var(--gold);
+    background-image:linear-gradient(rgba(217,164,65,.11),rgba(217,164,65,.11))}
+  .g.t1 .st b{color:var(--dim)}
+  .g.t4 .st b{color:var(--gold)}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 16px;
+    font-size:11px;color:var(--dim);align-items:center}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;
+    margin-right:5px;vertical-align:-1px;border:1px solid var(--line)}
+  .legend .k1{background:var(--panel)}
+  .legend .k2{background:rgba(63,182,139,.30);border-color:rgba(63,182,139,.45)}
+  .legend .k3{background:rgba(63,182,139,.60);border-color:rgba(63,182,139,.85)}
+  .legend .k4{background:rgba(217,164,65,.55);border-color:var(--gold)}
   .g .top{display:flex;justify-content:space-between;color:var(--dim);
     font-size:11px;margin-bottom:8px}
   .g .top a{color:var(--dim)}
@@ -135,6 +156,13 @@
       underdog banks that many wins and the favorite eats that many losses.
       A favorite's win is a plain 1–1. Matchup links open Baseball Savant's live
       gamefeed.</div>
+    <div class="legend">
+      <span>Upset worth:</span>
+      <span><i class="k1"></i>Even &lt;1.10</span>
+      <span><i class="k2"></i>Edge 1.10&ndash;1.25</span>
+      <span><i class="k3"></i>Upset 1.25&ndash;1.40</span>
+      <span><i class="k4"></i>Giant&#8209;killer 1.40+</span>
+    </div>
     <div id="slateDays"></div>
   </section>
 
@@ -247,6 +275,9 @@
   const gameTime = iso => new Date(iso).toLocaleTimeString("en-US",
     {hour:"numeric", minute:"2-digit", timeZone:"America/New_York"}) + " ET";
   const savant = pk => `https://baseballsavant.mlb.com/gamefeed?gamePk=${pk}`;
+  // fixed tranches, not per-slate quantiles: shading means the same thing
+  // every day. Boundaries approved against the full 1.00-1.535 range.
+  const tier = s => s >= 1.40 ? 4 : s >= 1.25 ? 3 : s >= 1.10 ? 2 : 1;
   $("slateDays").innerHTML = Object.keys(days).sort().map(d => {
     const cards = days[d].map(g => {
       const rows = [g.away, g.home].map(ab => {
@@ -258,13 +289,15 @@
           <span class="ml ${isFav?"fav":"dog"}">${ml(isFav?g.mlFav:g.mlDog)}</span>
         </div>`;
       }).join("");
-      return `<div class="g">
+      // edge as a share of the FAVORITE's payroll (bounded 0-100%)
+      const edgePct = Math.round(100 * g.edge / names[g.fav].payroll);
+      return `<div class="g t${tier(g.stake)}">
         <div class="top"><span>${g.live?'<span class="live">LIVE</span>':gameTime(g.iso)}</span>
           <a href="${savant(g.pk)}" target="_blank" rel="noopener">${g.away} @ ${g.home} ↗</a></div>
         ${rows}
         <div class="foot">
-          <span>Payroll edge <b>${g.fav} +${fmtM(g.edge)}</b></span>
-          <span class="st">Upset worth <b>${g.stake.toFixed(2)} W/L</b></span>
+          <span>Edge <b>${g.fav} +${fmtM(g.edge)} · ${edgePct}%</b></span>
+          <span class="st">Upset <b>${g.stake.toFixed(2)} W/L</b></span>
         </div>
       </div>`;
     }).join("");
