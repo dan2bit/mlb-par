@@ -4,6 +4,7 @@ Build docs/data.js for the MLB PAR Pages site.
 
 Reads:  schedule/sched_*.json  (season results, statsapi schedule shape)
         schedule/upcoming.json (next ~week, same shape)
+        schedule/season.json   (season window; written by fetch_data.py)
 Writes: docs/data.js           (window.PAR = {...})
 
 Run from anywhere; paths resolve relative to the repo root (parent of the
@@ -13,11 +14,15 @@ holds schedule/ itself).
 Payroll basis: Spotrac 2026 Active payroll snapshot (see PAYROLL).
 Model: upset-only payroll-logistic, g = max(1, 2*P_L^a/(P_L^a+P_W^a)),
 with per-game implied expectancy clamped to [1-MODEL_CAP, MODEL_CAP].
+
+Once the regular season is over this exits without rewriting data.js, so
+the daily workflow stops committing. Pass --force to rebuild anyway.
 """
 import glob
 import json
 import os
-from datetime import datetime, timezone
+import sys
+from datetime import date, datetime, timedelta, timezone
 
 ALPHA = 0.5
 # No club is ever priced outside this band for a single game. Payroll alone
@@ -95,6 +100,27 @@ def spotrac_url(ab):
     return f"https://www.spotrac.com/mlb/{SPOTRAC[ab]}"
 
 
+def season_is_over(sched_dir):
+    """True once the regular season (plus grace day) has passed.
+
+    Reads schedule/season.json, which fetch_data.py writes from the API.
+    Fails OPEN: if the file is missing or unreadable we generate as normal,
+    so a fresh clone or a manual rebuild is never silently blocked.
+
+    This guard matters even though fetch_data.py has its own: without it the
+    generator would still rewrite data.js every day with a new "generated"
+    timestamp, and the workflow would commit that churn forever.
+    """
+    try:
+        with open(os.path.join(sched_dir, "season.json")) as f:
+            d = json.load(f)
+        end = date.fromisoformat(d["regularSeasonEndDate"])
+        last = end + timedelta(days=int(d.get("graceDays", 1)))
+        return date.today() > last, last
+    except Exception:
+        return False, None
+
+
 def repo_root():
     here = os.path.dirname(os.path.abspath(__file__))
     for cand in (os.path.dirname(here), here):
@@ -140,8 +166,8 @@ def standings(sched_dir):
            for ab in PAYROLL}
     n = 0
     fav_wins = 0        # games won by the higher-payroll club
-    for date in load_dates(os.path.join(sched_dir, "sched_*.json")):
-        for g in date["games"]:
+    for date_ in load_dates(os.path.join(sched_dir, "sched_*.json")):
+        for g in date_["games"]:
             if g["status"].get("codedGameState") != "F":
                 continue
             home, away = g["teams"]["home"], g["teams"]["away"]
@@ -189,8 +215,8 @@ def standings(sched_dir):
 
 def slate(sched_dir):
     games = []
-    for date in load_dates(os.path.join(sched_dir, "upcoming.json")):
-        for g in date["games"]:
+    for date_ in load_dates(os.path.join(sched_dir, "upcoming.json")):
+        for g in date_["games"]:
             state = g["status"].get("codedGameState")
             if state in ("F", "D"):  # finished/postponed: off the board
                 continue
@@ -204,7 +230,7 @@ def slate(sched_dir):
             # upset weight: dog wins (winner=dog, loser=fav)
             stake = game_weight(PAYROLL[dog], PAYROLL[fav])
             games.append({
-                "pk": g["gamePk"], "date": date["date"], "iso": g["gameDate"],
+                "pk": g["gamePk"], "date": date_["date"], "iso": g["gameDate"],
                 "live": state == "I",
                 "away": away, "home": home,
                 "fav": fav, "dog": dog,
@@ -221,6 +247,13 @@ def slate(sched_dir):
 def main():
     root = repo_root()
     sched_dir = os.path.join(root, "schedule")
+
+    over, last = season_is_over(sched_dir)
+    if over and "--force" not in sys.argv:
+        print(f"Regular season closed (final refresh {last}); "
+              f"docs/data.js left untouched. Use --force to rebuild anyway.")
+        return
+
     st, n_games, fav_win_pct = standings(sched_dir)
     sl = slate(sched_dir)
     payload = {
